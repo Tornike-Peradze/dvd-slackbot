@@ -1,0 +1,22 @@
+[project]
+name = "dvd-slackbot"
+version = "0.1.0"
+description = "DVD Rental Slackbot"
+authors = [
+    {name = "Tornike Peradze"}
+]
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "slack-bolt (>=1.27.0,<2.0.0)",
+    "python-dotenv (>=1.2.2,<2.0.0)",
+    "sqlalchemy (>=2.0.48,<3.0.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
+    "pyyaml (>=6.0.3,<7.0.0)",
+    "pandasai (>=3.0.0,<4.0.0)",
+    "pandasai-litellm (>=0.0.1,<0.0.2)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
