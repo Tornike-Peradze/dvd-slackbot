@@ -1,0 +1,17 @@
+version: 1
+dataset: dvd_rental
+dialect: postgres
+
+overview:
+  description: "DVD rental store operational database."
+  timezone_assumption: "UTC"
+
+policies:
+  allowed_sql: ["SELECT"]
+  require_limit_for_detail_queries: true
+  default_detail_limit: 100
+  pii_columns:
+    - customer.email
+  safety_notes:
+    - "Never generate destructive SQL (INSERT/UPDATE/DELETE/DROP)."
+    - "Prefer aggregated outputs unless user explicitly requests row-level details."

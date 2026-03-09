@@ -1,0 +1,45 @@
+tables:
+  actor:
+    description: "Actor master data (one row per actor)."
+    grain: "1 row per actor"
+    primary_key: ["actor_id"]
+    important_columns:
+      first_name: "Actor first name."
+      last_name: "Actor last name."
+      last_update: "Timestamp of the last update."
+
+  film_actor:
+    description: "Bridge table connecting films and actors (many-to-many)."
+    grain: "1 row per (film_id, actor_id) association"
+    primary_key: ["film_id", "actor_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      actor_id:
+        references: "actor.actor_id"
+    important_columns:
+      last_update: "Timestamp of the last update."
+    notes:
+      - "Many-to-many enrichment: joining through film_actor can multiply rows (fanout). Use care when aggregating money/transactions."
+
+  category:
+    description: "Film category lookup table."
+    grain: "1 row per category"
+    primary_key: ["category_id"]
+    important_columns:
+      name: "Category name."
+      last_update: "Timestamp of the last update."
+
+  film_category:
+    description: "Bridge table connecting films and categories (many-to-many)."
+    grain: "1 row per (film_id, category_id) association"
+    primary_key: ["film_id", "category_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      category_id:
+        references: "category.category_id"
+    important_columns:
+      last_update: "Timestamp of the last update."
+    notes:
+      - "Many-to-many enrichment: joining through film_category can multiply rows (fanout). Use care when aggregating money/transactions."

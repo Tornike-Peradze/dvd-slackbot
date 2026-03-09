@@ -1,0 +1,52 @@
+views:
+  sales_by_store:
+    description: "Total sales by store location and manager."
+    grain: "1 row per store (by city,country,store_id,manager)"
+    safe_for:
+      - "Revenue by store"
+      - "Store performance leaderboard"
+    uses_canonical_revenue: true
+    sql_notes:
+      - "Based on SUM(payment.amount) with canonical join path payment->rental->inventory->store->address->city->country."
+
+  sales_by_film_category:
+    description: "Total sales by film category."
+    grain: "1 row per category"
+    safe_for:
+      - "Revenue by category"
+      - "Top categories by sales"
+    uses_canonical_revenue: true
+    warnings:
+      - "Category attribution is via film_category (many-to-many potential). Treat as revenue attributed to categories, not necessarily unique allocation."
+
+  customer_list:
+    description: "Flattened customer dimension with address/city/country."
+    grain: "1 row per customer"
+    safe_for:
+      - "Customer counts by geography"
+      - "Customer directory (avoid exposing email unless explicitly allowed)"
+    warnings:
+      - "Contains PII fields (address/phone). Follow policies."
+
+  staff_list:
+    description: "Flattened staff dimension with address/city/country."
+    grain: "1 row per staff"
+    safe_for:
+      - "Staff directory"
+      - "Staff counts by geography"
+    warnings:
+      - "Contains PII fields (address/phone). Follow policies."
+
+view_policies:
+  allowed_views:
+    - sales_by_store
+    - sales_by_film_category
+    - customer_list
+    - staff_list
+  disallowed_views:
+    - actor_info
+    - film_list
+    - nicer_but_slower_film_list
+  rules:
+    - "Prefer base tables for new analysis unless a view directly matches the question."
+    - "Never treat film_list.price (rental_rate) as revenue."

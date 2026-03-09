@@ -1,0 +1,615 @@
+# --- SOURCE: 00_overview_policies.yaml ---version: 1
+dataset: dvd_rental
+dialect: postgres
+
+overview:
+  description: "DVD rental store operational database."
+  timezone_assumption: "UTC"
+
+policies:
+  allowed_sql: ["SELECT"]
+  require_limit_for_detail_queries: true
+  default_detail_limit: 100
+  pii_columns:
+    - customer.email
+  safety_notes:
+    - "Never generate destructive SQL (INSERT/UPDATE/DELETE/DROP)."
+    - "Prefer aggregated outputs unless user explicitly requests row-level details."
+
+# --- SOURCE: 01_tables_transactions.yaml ---
+tables:
+  payment:
+    description: "Payment transactions made by customers for rentals."
+    grain: "1 row per payment transaction"
+    primary_key: ["payment_id"]
+    foreign_keys:
+      customer_id:
+        references: "customer.customer_id"
+      staff_id:
+        references: "staff.staff_id"
+      rental_id:
+        references: "rental.rental_id"
+    important_columns:
+      amount: "Amount paid in this transaction."
+      payment_date: "Timestamp when the payment was made."
+
+  rental:
+    description: "A rental event where a customer rents a physical inventory item."
+    grain: "1 row per rental event"
+    primary_key: ["rental_id"]
+    foreign_keys:
+      inventory_id:
+        references: "inventory.inventory_id"
+      customer_id:
+        references: "customer.customer_id"
+      staff_id:
+        references: "staff.staff_id"
+    important_columns:
+      rental_date: "Date when the rental started."
+      return_date: "Date when the rental was returned (NULL if still rented)."
+
+# --- SOURCE: 02_tables_inventory_product.yaml ---
+tables:
+  inventory:
+    description: "A physical inventory item (a specific copy of a film) held by a store."
+    grain: "1 row per physical inventory item"
+    primary_key: ["inventory_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      store_id:
+        references: "store.store_id"
+    important_columns:
+      last_update: "Timestamp of the last update to this record."
+
+  film:
+    description: "Film master data (one row per film title)."
+    grain: "1 row per film"
+    primary_key: ["film_id"]
+    foreign_keys:
+      language_id:
+        references: "language.language_id"
+    important_columns:
+      title: "Film title."
+      release_year: "Year the film was released."
+      rental_duration: "Allowed rental duration (days)."
+      rental_rate: "Listed rental price (not guaranteed actual revenue)."
+      length: "Film length in minutes."
+      rating: "Film rating."
+      last_update: "Timestamp of the last update to this record."
+    notes:
+      - "Film is enriched via many-to-many bridges: film_category->category and film_actor->actor (defined later in Enrichment domain)."
+
+  language:
+    description: "Language lookup table for films."
+    grain: "1 row per language"
+    primary_key: ["language_id"]
+    important_columns:
+      name: "Language name."
+      last_update: "Timestamp of the last update to this record."
+
+# --- SOURCE: 03_tables_people.yaml ---
+tables:
+  customer:
+    description: "Customer master data (one row per customer)."
+    grain: "1 row per customer"
+    primary_key: ["customer_id"]
+    foreign_keys:
+      store_id:
+        references: "store.store_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      first_name: "Customer first name."
+      last_name: "Customer last name."
+      email: "Customer email (PII)."
+      activebool: "Whether the customer is active (boolean flag)."
+      create_date: "Date the customer was created."
+      last_update: "Timestamp of the last update."
+      active: "Active status (legacy/secondary flag)."
+    notes:
+      - "Customer has both activebool and active; prefer activebool unless business rules say otherwise."
+      - "Customer.store_id may represent the customer's home store; rentals link to stores via inventory (operational store)."
+
+  staff:
+    description: "Staff master data (one row per staff member)."
+    grain: "1 row per staff member"
+    primary_key: ["staff_id"]
+    foreign_keys:
+      store_id:
+        references: "store.store_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      first_name: "Staff first name."
+      last_name: "Staff last name."
+      email: "Staff email (PII)."
+      active: "Whether the staff member is active."
+      username: "Login username."
+      last_update: "Timestamp of the last update."
+      picture: "Optional staff picture metadata."
+
+# --- SOURCE: 04_tables_location.yaml ---
+tables:
+  store:
+    description: "Store master data (one row per store)."
+    grain: "1 row per store"
+    primary_key: ["store_id"]
+    foreign_keys:
+      manager_staff_id:
+        references: "staff.manager_staff_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      last_update: "Timestamp of the last update to this record."
+    notes:
+      - "Store location is derived via store.address_id -> address -> city -> country."
+      - "Some analytics questions refer to 'store of rental' (inventory.store_id) vs 'customer home store' (customer.store_id)."
+
+  address:
+    description: "Address master data used by customers, staff, and stores."
+    grain: "1 row per address"
+    primary_key: ["address_id"]
+    foreign_keys:
+      city_id:
+        references: "city.city_id"
+    important_columns:
+      address: "Primary address line."
+      address2: "Secondary address line (optional)."
+      district: "District/region."
+      postal_code: "Postal code."
+      phone: "Phone number."
+      last_update: "Timestamp of the last update."
+
+  city:
+    description: "City lookup table."
+    grain: "1 row per city"
+    primary_key: ["city_id"]
+    foreign_keys:
+      country_id:
+        references: "country.country_id"
+    important_columns:
+      city: "City name."
+      last_update: "Timestamp of the last update."
+
+  country:
+    description: "Country lookup table."
+    grain: "1 row per country"
+    primary_key: ["country_id"]
+    important_columns:
+      country: "Country name."
+      last_update: "Timestamp of the last update."
+
+# --- SOURCE: 05_tables_enrichment.yaml ---
+tables:
+  actor:
+    description: "Actor master data (one row per actor)."
+    grain: "1 row per actor"
+    primary_key: ["actor_id"]
+    important_columns:
+      first_name: "Actor first name."
+      last_name: "Actor last name."
+      last_update: "Timestamp of the last update."
+
+  film_actor:
+    description: "Bridge table connecting films and actors (many-to-many)."
+    grain: "1 row per (film_id, actor_id) association"
+    primary_key: ["film_id", "actor_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      actor_id:
+        references: "actor.actor_id"
+    important_columns:
+      last_update: "Timestamp of the last update."
+    notes:
+      - "Many-to-many enrichment: joining through film_actor can multiply rows (fanout). Use care when aggregating money/transactions."
+
+  category:
+    description: "Film category lookup table."
+    grain: "1 row per category"
+    primary_key: ["category_id"]
+    important_columns:
+      name: "Category name."
+      last_update: "Timestamp of the last update."
+
+  film_category:
+    description: "Bridge table connecting films and categories (many-to-many)."
+    grain: "1 row per (film_id, category_id) association"
+    primary_key: ["film_id", "category_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      category_id:
+        references: "category.category_id"
+    important_columns:
+      last_update: "Timestamp of the last update."
+    notes:
+      - "Many-to-many enrichment: joining through film_category can multiply rows (fanout). Use care when aggregating money/transactions."
+
+# --- SOURCE: 06_relationships.yaml ---
+relationships:
+  - name: payment_to_rental
+    from: payment
+    to: rental
+    join:
+      type: many_to_one
+      on:
+        - payment.rental_id = rental.rental_id
+    notes: "Canonical path linking revenue to rental events."
+
+  - name: rental_to_inventory
+    from: rental
+    to: inventory
+    join:
+      type: many_to_one
+      on:
+        - rental.inventory_id = inventory.inventory_id
+    notes: "Each rental references a specific physical inventory item."
+  
+  - name: inventory_to_film
+    from: inventory
+    to: film
+    join:
+      type: many_to_one
+      on:
+        - inventory.film_id = film.film_id
+    notes: "Inventory item is a specific copy of a film."
+
+  - name: film_to_language
+    from: film
+    to: language
+    join:
+      type: many_to_one
+      on:
+        - film.language_id = language.language_id
+    notes: "Film language lookup."
+
+  - name: inventory_to_store
+    from: inventory
+    to: store
+    join:
+      type: many_to_one
+      on:
+        - inventory.store_id = store.store_id
+    notes: "Inventory item belongs to a store (store table will be defined in the Location domain)."
+
+  - name: payment_to_customer
+    from: payment
+    to: customer
+    join:
+      type: many_to_one
+      on:
+        - payment.customer_id = customer.customer_id
+    notes: "Canonical link from payments to the paying customer."
+
+  - name: payment_to_staff
+    from: payment
+    to: staff
+    join:
+      type: many_to_one
+      on:
+        - payment.staff_id = staff.staff_id
+    notes: "Canonical link from payments to the staff member who processed the payment."
+
+  - name: rental_to_customer
+    from: rental
+    to: customer
+    join:
+      type: many_to_one
+      on:
+        - rental.customer_id = customer.customer_id
+    notes: "Rental belongs to a customer."
+
+  - name: rental_to_staff
+    from: rental
+    to: staff
+    join:
+      type: many_to_one
+      on:
+        - rental.staff_id = staff.staff_id
+    notes: "Rental processed by a staff member."
+
+  - name: store_to_address
+    from: store
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - store.address_id = address.address_id
+    notes: "Store location address."
+
+  - name: customer_to_address
+    from: customer
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - customer.address_id = address.address_id
+    notes: "Customer location address."
+
+  - name: staff_to_address
+    from: staff
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - staff.address_id = address.address_id
+    notes: "Staff location address."
+
+  - name: address_to_city_country
+    from: address
+    to: city
+    join:
+      type: many_to_one
+      on:
+        - address.city_id = city.city_id
+    notes: "Address -> city (country via city.country_id)."
+
+  - name: city_to_country
+    from: city
+    to: country
+    join:
+      type: many_to_one
+      on:
+        - city.country_id = country.country_id
+    notes: "City belongs to a country."
+
+  - name: film_to_film_actor
+    from: film
+    to: film_actor
+    join:
+      type: one_to_many
+      on:
+        - film.film_id = film_actor.film_id
+    notes: "Film to actor bridge."
+
+  - name: film_actor_to_actor
+    from: film_actor
+    to: actor
+    join:
+      type: many_to_one
+      on:
+        - film_actor.actor_id = actor.actor_id
+    notes: "Actor lookup for film."
+
+  - name: film_to_film_category
+    from: film
+    to: film_category
+    join:
+      type: one_to_many
+      on:
+        - film.film_id = film_category.film_id
+    notes: "Film to category bridge."
+
+  - name: film_category_to_category
+    from: film_category
+    to: category
+    join:
+      type: many_to_one
+      on:
+        - film_category.category_id = category.category_id
+    notes: "Category lookup for film."
+
+# --- SOURCE: 20_entities.yaml ---
+entities:
+  PaymentTransaction:
+    primary_table: payment
+    key: payment_id
+    grain: "1 row per payment transaction"
+    description: "A monetary transaction tied to a rental, paid by a customer and processed by staff."
+    core_fields:
+      - payment.payment_id
+      - payment.amount
+      - payment.payment_date
+      - payment.customer_id
+      - payment.staff_id
+      - payment.rental_id
+
+  RentalEvent:
+    primary_table: rental
+    key: rental_id
+    grain: "1 row per rental event"
+    description: "A customer renting a physical inventory item; may be returned later."
+    core_fields:
+      - rental.rental_id
+      - rental.rental_date
+      - rental.return_date
+      - rental.inventory_id
+      - rental.customer_id
+      - rental.staff_id
+
+  InventoryItem:
+    primary_table: inventory
+    key: inventory_id
+    grain: "1 row per physical inventory item"
+    description: "A specific copy of a film held at a store."
+    core_fields:
+      - inventory.inventory_id
+      - inventory.film_id
+      - inventory.store_id
+
+  Film:
+    primary_table: film
+    key: film_id
+    grain: "1 row per film"
+    description: "Film master data (title, rating, rental terms)."
+    core_fields:
+      - film.film_id
+      - film.title
+      - film.release_year
+      - film.rating
+      - film.rental_rate
+      - film.rental_duration
+      - film.language_id
+
+  Customer:
+    primary_table: customer
+    key: customer_id
+    grain: "1 row per customer"
+    description: "Customer master record; linked to an address and (home) store."
+    core_fields:
+      - customer.customer_id
+      - customer.first_name
+      - customer.last_name
+      - customer.activebool
+      - customer.create_date
+      - customer.store_id
+      - customer.address_id
+
+  Staff:
+    primary_table: staff
+    key: staff_id
+    grain: "1 row per staff member"
+    description: "Staff member who processes rentals and payments."
+    core_fields:
+      - staff.staff_id
+      - staff.first_name
+      - staff.last_name
+      - staff.active
+      - staff.store_id
+      - staff.address_id
+
+  Store:
+    primary_table: store
+    key: store_id
+    grain: "1 row per store"
+    description: "Store entity; location derived through its address."
+    core_fields:
+      - store.store_id
+      - store.manager_staff_id
+      - store.address_id
+
+  Category:
+    primary_table: category
+    key: category_id
+    grain: "1 row per category"
+    description: "Film category (many-to-many with films)."
+    core_fields:
+      - category.category_id
+      - category.name
+
+  Actor:
+    primary_table: actor
+    key: actor_id
+    grain: "1 row per actor"
+    description: "Actor entity (many-to-many with films)."
+    core_fields:
+      - actor.actor_id
+      - actor.first_name
+      - actor.last_name
+
+  Geography:
+    primary_table: address
+    key: address_id
+    grain: "1 row per address"
+    description: "Geographic hierarchy: address -> city -> country."
+    core_fields:
+      - address.address_id
+      - city.city_id
+      - city.city
+      - country.country_id
+      - country.country
+
+# --- SOURCE: 06_views.yaml ---
+views:
+  sales_by_store:
+    description: "Total sales by store location and manager."
+    grain: "1 row per store (by city,country,store_id,manager)"
+    safe_for:
+      - "Revenue by store"
+      - "Store performance leaderboard"
+    uses_canonical_revenue: true
+    sql_notes:
+      - "Based on SUM(payment.amount) with canonical join path payment->rental->inventory->store->address->city->country."
+
+  sales_by_film_category:
+    description: "Total sales by film category."
+    grain: "1 row per category"
+    safe_for:
+      - "Revenue by category"
+      - "Top categories by sales"
+    uses_canonical_revenue: true
+    warnings:
+      - "Category attribution is via film_category (many-to-many potential). Treat as revenue attributed to categories, not necessarily unique allocation."
+
+  customer_list:
+    description: "Flattened customer dimension with address/city/country."
+    grain: "1 row per customer"
+    safe_for:
+      - "Customer counts by geography"
+      - "Customer directory (avoid exposing email unless explicitly allowed)"
+    warnings:
+      - "Contains PII fields (address/phone). Follow policies."
+
+  staff_list:
+    description: "Flattened staff dimension with address/city/country."
+    grain: "1 row per staff"
+    safe_for:
+      - "Staff directory"
+      - "Staff counts by geography"
+    warnings:
+      - "Contains PII fields (address/phone). Follow policies."
+
+view_policies:
+  allowed_views:
+    - sales_by_store
+    - sales_by_film_category
+    - customer_list
+    - staff_list
+  disallowed_views:
+    - actor_info
+    - film_list
+    - nicer_but_slower_film_list
+  rules:
+    - "Prefer base tables for new analysis unless a view directly matches the question."
+    - "Never treat film_list.price (rental_rate) as revenue."
+
+# --- SOURCE: 30_metrics.yaml ---
+metrics:
+  revenue:
+    description: "Total revenue collected from customers."
+    definition: "Sum of payment.amount. This is the canonical revenue source."
+    base_table: payment
+    sql: "SUM(payment.amount)"
+    time_column: payment.payment_date
+    notes:
+      - "Do not use film.rental_rate as revenue."
+      - "When joining to many-to-many enrichment (category/actor), beware fanout."
+
+  payments_count:
+    description: "Number of payment transactions."
+    base_table: payment
+    sql: "COUNT(payment.payment_id)"
+    time_column: payment.payment_date
+
+  rentals_count:
+    description: "Number of rental events."
+    base_table: rental
+    sql: "COUNT(rental.rental_id)"
+    time_column: rental.rental_date
+
+  active_customers_count:
+    description: "Count of active customers."
+    base_table: customer
+    sql: "COUNT(*) FILTER (WHERE customer.activebool = true)"
+    notes:
+      - "Prefer activebool over active unless business rules specify otherwise."
+
+  distinct_customers_paying:
+    description: "Number of distinct customers who made payments."
+    base_table: payment
+    sql: "COUNT(DISTINCT payment.customer_id)"
+    time_column: payment.payment_date
+
+  avg_revenue_per_customer:
+    description: "Average revenue per distinct paying customer."
+    base_table: payment
+    sql: "SUM(payment.amount) / NULLIF(COUNT(DISTINCT payment.customer_id), 0)"
+    time_column: payment.payment_date
+
+metric_policies:
+  rules:
+    - "Revenue must be computed from payment.amount unless explicitly asked for listed prices."
+    - "For detail queries, include LIMIT (default 100) unless user requests otherwise."
+

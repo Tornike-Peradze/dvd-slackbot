@@ -1,0 +1,118 @@
+entities:
+  PaymentTransaction:
+    primary_table: payment
+    key: payment_id
+    grain: "1 row per payment transaction"
+    description: "A monetary transaction tied to a rental, paid by a customer and processed by staff."
+    core_fields:
+      - payment.payment_id
+      - payment.amount
+      - payment.payment_date
+      - payment.customer_id
+      - payment.staff_id
+      - payment.rental_id
+
+  RentalEvent:
+    primary_table: rental
+    key: rental_id
+    grain: "1 row per rental event"
+    description: "A customer renting a physical inventory item; may be returned later."
+    core_fields:
+      - rental.rental_id
+      - rental.rental_date
+      - rental.return_date
+      - rental.inventory_id
+      - rental.customer_id
+      - rental.staff_id
+
+  InventoryItem:
+    primary_table: inventory
+    key: inventory_id
+    grain: "1 row per physical inventory item"
+    description: "A specific copy of a film held at a store."
+    core_fields:
+      - inventory.inventory_id
+      - inventory.film_id
+      - inventory.store_id
+
+  Film:
+    primary_table: film
+    key: film_id
+    grain: "1 row per film"
+    description: "Film master data (title, rating, rental terms)."
+    core_fields:
+      - film.film_id
+      - film.title
+      - film.release_year
+      - film.rating
+      - film.rental_rate
+      - film.rental_duration
+      - film.language_id
+
+  Customer:
+    primary_table: customer
+    key: customer_id
+    grain: "1 row per customer"
+    description: "Customer master record; linked to an address and (home) store."
+    core_fields:
+      - customer.customer_id
+      - customer.first_name
+      - customer.last_name
+      - customer.activebool
+      - customer.create_date
+      - customer.store_id
+      - customer.address_id
+
+  Staff:
+    primary_table: staff
+    key: staff_id
+    grain: "1 row per staff member"
+    description: "Staff member who processes rentals and payments."
+    core_fields:
+      - staff.staff_id
+      - staff.first_name
+      - staff.last_name
+      - staff.active
+      - staff.store_id
+      - staff.address_id
+
+  Store:
+    primary_table: store
+    key: store_id
+    grain: "1 row per store"
+    description: "Store entity; location derived through its address."
+    core_fields:
+      - store.store_id
+      - store.manager_staff_id
+      - store.address_id
+
+  Category:
+    primary_table: category
+    key: category_id
+    grain: "1 row per category"
+    description: "Film category (many-to-many with films)."
+    core_fields:
+      - category.category_id
+      - category.name
+
+  Actor:
+    primary_table: actor
+    key: actor_id
+    grain: "1 row per actor"
+    description: "Actor entity (many-to-many with films)."
+    core_fields:
+      - actor.actor_id
+      - actor.first_name
+      - actor.last_name
+
+  Geography:
+    primary_table: address
+    key: address_id
+    grain: "1 row per address"
+    description: "Geographic hierarchy: address -> city -> country."
+    core_fields:
+      - address.address_id
+      - city.city_id
+      - city.city
+      - country.country_id
+      - country.country

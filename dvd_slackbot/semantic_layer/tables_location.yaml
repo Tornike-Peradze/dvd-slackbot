@@ -1,0 +1,49 @@
+tables:
+  store:
+    description: "Store master data (one row per store)."
+    grain: "1 row per store"
+    primary_key: ["store_id"]
+    foreign_keys:
+      manager_staff_id:
+        references: "staff.manager_staff_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      last_update: "Timestamp of the last update to this record."
+    notes:
+      - "Store location is derived via store.address_id -> address -> city -> country."
+      - "Some analytics questions refer to 'store of rental' (inventory.store_id) vs 'customer home store' (customer.store_id)."
+
+  address:
+    description: "Address master data used by customers, staff, and stores."
+    grain: "1 row per address"
+    primary_key: ["address_id"]
+    foreign_keys:
+      city_id:
+        references: "city.city_id"
+    important_columns:
+      address: "Primary address line."
+      address2: "Secondary address line (optional)."
+      district: "District/region."
+      postal_code: "Postal code."
+      phone: "Phone number."
+      last_update: "Timestamp of the last update."
+
+  city:
+    description: "City lookup table."
+    grain: "1 row per city"
+    primary_key: ["city_id"]
+    foreign_keys:
+      country_id:
+        references: "country.country_id"
+    important_columns:
+      city: "City name."
+      last_update: "Timestamp of the last update."
+
+  country:
+    description: "Country lookup table."
+    grain: "1 row per country"
+    primary_key: ["country_id"]
+    important_columns:
+      country: "Country name."
+      last_update: "Timestamp of the last update."

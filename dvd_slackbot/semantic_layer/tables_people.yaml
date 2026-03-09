@@ -1,0 +1,39 @@
+tables:
+  customer:
+    description: "Customer master data (one row per customer)."
+    grain: "1 row per customer"
+    primary_key: ["customer_id"]
+    foreign_keys:
+      store_id:
+        references: "store.store_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      first_name: "Customer first name."
+      last_name: "Customer last name."
+      email: "Customer email (PII)."
+      activebool: "Whether the customer is active (boolean flag)."
+      create_date: "Date the customer was created."
+      last_update: "Timestamp of the last update."
+      active: "Active status (legacy/secondary flag)."
+    notes:
+      - "Customer has both activebool and active; prefer activebool unless business rules say otherwise."
+      - "Customer.store_id may represent the customer's home store; rentals link to stores via inventory (operational store)."
+
+  staff:
+    description: "Staff master data (one row per staff member)."
+    grain: "1 row per staff member"
+    primary_key: ["staff_id"]
+    foreign_keys:
+      store_id:
+        references: "store.store_id"
+      address_id:
+        references: "address.address_id"
+    important_columns:
+      first_name: "Staff first name."
+      last_name: "Staff last name."
+      email: "Staff email (PII)."
+      active: "Whether the staff member is active."
+      username: "Login username."
+      last_update: "Timestamp of the last update."
+      picture: "Optional staff picture metadata."

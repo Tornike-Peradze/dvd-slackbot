@@ -1,0 +1,46 @@
+metrics:
+  revenue:
+    description: "Total revenue collected from customers."
+    definition: "Sum of payment.amount. This is the canonical revenue source."
+    base_table: payment
+    sql: "SUM(payment.amount)"
+    time_column: payment.payment_date
+    notes:
+      - "Do not use film.rental_rate as revenue."
+      - "When joining to many-to-many enrichment (category/actor), beware fanout."
+
+  payments_count:
+    description: "Number of payment transactions."
+    base_table: payment
+    sql: "COUNT(payment.payment_id)"
+    time_column: payment.payment_date
+
+  rentals_count:
+    description: "Number of rental events."
+    base_table: rental
+    sql: "COUNT(rental.rental_id)"
+    time_column: rental.rental_date
+
+  active_customers_count:
+    description: "Count of active customers."
+    base_table: customer
+    sql: "COUNT(*) FILTER (WHERE customer.activebool = true)"
+    notes:
+      - "Prefer activebool over active unless business rules specify otherwise."
+
+  distinct_customers_paying:
+    description: "Number of distinct customers who made payments."
+    base_table: payment
+    sql: "COUNT(DISTINCT payment.customer_id)"
+    time_column: payment.payment_date
+
+  avg_revenue_per_customer:
+    description: "Average revenue per distinct paying customer."
+    base_table: payment
+    sql: "SUM(payment.amount) / NULLIF(COUNT(DISTINCT payment.customer_id), 0)"
+    time_column: payment.payment_date
+
+metric_policies:
+  rules:
+    - "Revenue must be computed from payment.amount unless explicitly asked for listed prices."
+    - "For detail queries, include LIMIT (default 100) unless user requests otherwise."

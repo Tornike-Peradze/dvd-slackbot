@@ -1,0 +1,164 @@
+relationships:
+  - name: payment_to_rental
+    from: payment
+    to: rental
+    join:
+      type: many_to_one
+      on:
+        - payment.rental_id = rental.rental_id
+    notes: "Canonical path linking revenue to rental events."
+
+  - name: rental_to_inventory
+    from: rental
+    to: inventory
+    join:
+      type: many_to_one
+      on:
+        - rental.inventory_id = inventory.inventory_id
+    notes: "Each rental references a specific physical inventory item."
+  
+  - name: inventory_to_film
+    from: inventory
+    to: film
+    join:
+      type: many_to_one
+      on:
+        - inventory.film_id = film.film_id
+    notes: "Inventory item is a specific copy of a film."
+
+  - name: film_to_language
+    from: film
+    to: language
+    join:
+      type: many_to_one
+      on:
+        - film.language_id = language.language_id
+    notes: "Film language lookup."
+
+  - name: inventory_to_store
+    from: inventory
+    to: store
+    join:
+      type: many_to_one
+      on:
+        - inventory.store_id = store.store_id
+    notes: "Inventory item belongs to a store (store table will be defined in the Location domain)."
+
+  - name: payment_to_customer
+    from: payment
+    to: customer
+    join:
+      type: many_to_one
+      on:
+        - payment.customer_id = customer.customer_id
+    notes: "Canonical link from payments to the paying customer."
+
+  - name: payment_to_staff
+    from: payment
+    to: staff
+    join:
+      type: many_to_one
+      on:
+        - payment.staff_id = staff.staff_id
+    notes: "Canonical link from payments to the staff member who processed the payment."
+
+  - name: rental_to_customer
+    from: rental
+    to: customer
+    join:
+      type: many_to_one
+      on:
+        - rental.customer_id = customer.customer_id
+    notes: "Rental belongs to a customer."
+
+  - name: rental_to_staff
+    from: rental
+    to: staff
+    join:
+      type: many_to_one
+      on:
+        - rental.staff_id = staff.staff_id
+    notes: "Rental processed by a staff member."
+
+  - name: store_to_address
+    from: store
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - store.address_id = address.address_id
+    notes: "Store location address."
+
+  - name: customer_to_address
+    from: customer
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - customer.address_id = address.address_id
+    notes: "Customer location address."
+
+  - name: staff_to_address
+    from: staff
+    to: address
+    join:
+      type: many_to_one
+      on:
+        - staff.address_id = address.address_id
+    notes: "Staff location address."
+
+  - name: address_to_city_country
+    from: address
+    to: city
+    join:
+      type: many_to_one
+      on:
+        - address.city_id = city.city_id
+    notes: "Address -> city (country via city.country_id)."
+
+  - name: city_to_country
+    from: city
+    to: country
+    join:
+      type: many_to_one
+      on:
+        - city.country_id = country.country_id
+    notes: "City belongs to a country."
+
+  - name: film_to_film_actor
+    from: film
+    to: film_actor
+    join:
+      type: one_to_many
+      on:
+        - film.film_id = film_actor.film_id
+    notes: "Film to actor bridge."
+
+  - name: film_actor_to_actor
+    from: film_actor
+    to: actor
+    join:
+      type: many_to_one
+      on:
+        - film_actor.actor_id = actor.actor_id
+    notes: "Actor lookup for film."
+
+  - name: film_to_film_category
+    from: film
+    to: film_category
+    join:
+      type: one_to_many
+      on:
+        - film.film_id = film_category.film_id
+    notes: "Film to category bridge."
+
+  - name: film_category_to_category
+    from: film_category
+    to: category
+    join:
+      type: many_to_one
+      on:
+        - film_category.category_id = category.category_id
+    notes: "Category lookup for film."
+
+

@@ -1,0 +1,38 @@
+tables:
+  inventory:
+    description: "A physical inventory item (a specific copy of a film) held by a store."
+    grain: "1 row per physical inventory item"
+    primary_key: ["inventory_id"]
+    foreign_keys:
+      film_id:
+        references: "film.film_id"
+      store_id:
+        references: "store.store_id"
+    important_columns:
+      last_update: "Timestamp of the last update to this record."
+
+  film:
+    description: "Film master data (one row per film title)."
+    grain: "1 row per film"
+    primary_key: ["film_id"]
+    foreign_keys:
+      language_id:
+        references: "language.language_id"
+    important_columns:
+      title: "Film title."
+      release_year: "Year the film was released."
+      rental_duration: "Allowed rental duration (days)."
+      rental_rate: "Listed rental price (not guaranteed actual revenue)."
+      length: "Film length in minutes."
+      rating: "Film rating."
+      last_update: "Timestamp of the last update to this record."
+    notes:
+      - "Film is enriched via many-to-many bridges: film_category->category and film_actor->actor (defined later in Enrichment domain)."
+
+  language:
+    description: "Language lookup table for films."
+    grain: "1 row per language"
+    primary_key: ["language_id"]
+    important_columns:
+      name: "Language name."
+      last_update: "Timestamp of the last update to this record."

@@ -1,0 +1,30 @@
+tables:
+  payment:
+    description: "Payment transactions made by customers for rentals."
+    grain: "1 row per payment transaction"
+    primary_key: ["payment_id"]
+    foreign_keys:
+      customer_id:
+        references: "customer.customer_id"
+      staff_id:
+        references: "staff.staff_id"
+      rental_id:
+        references: "rental.rental_id"
+    important_columns:
+      amount: "Amount paid in this transaction."
+      payment_date: "Timestamp when the payment was made."
+
+  rental:
+    description: "A rental event where a customer rents a physical inventory item."
+    grain: "1 row per rental event"
+    primary_key: ["rental_id"]
+    foreign_keys:
+      inventory_id:
+        references: "inventory.inventory_id"
+      customer_id:
+        references: "customer.customer_id"
+      staff_id:
+        references: "staff.staff_id"
+    important_columns:
+      rental_date: "Date when the rental started."
+      return_date: "Date when the rental was returned (NULL if still rented)."
