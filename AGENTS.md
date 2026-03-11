@@ -3,6 +3,41 @@
 ## Project Overview
 Slack-based natural language analytics assistant over a PostgreSQL dvd_rental database.
 Users ask plain-English questions; the bot returns data insights without SQL or dashboards.
+Orchestration is handled by **LangGraph StateGraph**. All nodes share a single BotState TypedDict.
+
+---
+
+## Orchestration Framework — CRITICAL
+**This project uses LangGraph. Never suggest plain sequential Python for the pipeline.**
+
+### Graph structure:
+```
+parse_input → input_guardrails → router → data_loader → pandasai_reasoner → output_guardrails → response_formatter
+```
+
+### Conditional edges:
+- `input_guardrails` FAIL → `response_formatter`
+- `input_guardrails` PASS → `router`
+- `output_guardrails` FAIL → `response_formatter`
+- `output_guardrails` PASS → `response_formatter`
+
+### Shared state schema:
+```python
+class BotState(TypedDict):
+    question: str
+    user: str
+    channel: str
+    session_id: str
+    guardrail_result: str
+    intent: dict
+    dataframe: Any
+    result: str
+    error: str
+    memory: list
+```
+
+Graph is defined in `dvd_slackbot/orchestration/graph.py`.
+Each node is a pure function that takes BotState and returns a partial BotState update.
 
 ---
 
@@ -60,19 +95,9 @@ Always route revenue + category questions to the `sales_by_film_category` safe v
 
 ---
 
-## Architecture — Pipeline Order
-```
-Slack → Input Parser → Input Guardrails → Router ↔ Semantic Layer
-Router ↔ Memory → Data Loader → Postgres
-→ PandasAI Reasoner → Output Guardrails → Response Formatter → Slack
-```
-No LangGraph. Plain Python linear pipeline with conditional exits only.
-
----
-
 ## Slack UX Rule
-**Always send an immediate acknowledgment to Slack before any processing begins.**
-Example: `"🔍 On it..."` or `"Analyzing your question..."`
+**Always send an immediate acknowledgment to Slack in the `parse_input` node, before the graph continues.**
+Example: `"🔍 On it..."``
 The pipeline takes 8–20 seconds. Users must not see silence.
 
 ---
