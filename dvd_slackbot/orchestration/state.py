@@ -1,4 +1,4 @@
-from typing import TypedDict, Any
+from typing import TypedDict, Any, Optional
 
 class BotState(TypedDict):
     question: str
@@ -11,3 +11,4 @@ class BotState(TypedDict):
     result: str
     error: str
     memory: list
+    chart_path: Optional[str]

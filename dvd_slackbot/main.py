@@ -59,12 +59,15 @@ def handle_message(message, say):
         
         # Step 3: Return result
         final_result = final_state.get("result", "⚠️ No result was generated.")
-        
+        chart_uploaded = final_state.get("chart_uploaded", False)
+
         # Add to memory
         memory_store.add_turn(session_key, "user", text)
         memory_store.add_turn(session_key, "bot", final_result)
-        
-        say(final_result)
+
+        # Only say the result if chart wasn't already sent with it
+        if not chart_uploaded and final_result:
+            say(final_result)
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")
